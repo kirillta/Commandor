@@ -79,5 +79,21 @@ namespace Commandor.Tests
             Assert.Equal(3, vals.Count());
             Assert.Contains("a1", vals);
         }
+
+
+        [Fact]
+        public void ShouldReturnsArgumentsWithoutOuterQuotes1()
+        {
+            var args = new[] { "/m", "/p", "\"c:\\Projects\\Ming\\Dictionaries\\ГОСТ 7.79-2000 ISO 9.txt\"", "/c", "ru", "/f", "ru", "/t", "en", "/n", "\"ISO9 A\"" };
+            var parser = new FloxDc.Commandor.Commandor();
+
+            var result = parser.Parse(args);
+            var vals = result["c"].ToList();
+
+            Assert.IsType(typeof(Lookup<string, string>), result);
+            Assert.Equal(6, result.Count());
+            Assert.Equal(1, vals.Count());
+            Assert.Contains("ru", vals);
+        }
     }
 }

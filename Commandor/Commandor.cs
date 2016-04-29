@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace FloxDc.Commandor
@@ -15,34 +16,45 @@ namespace FloxDc.Commandor
 
             var result = new List<KeyValuePair<string, string>>();
             var command = GetCommand(trimmed[0]);
-            var arguments = string.Empty;
 
             if (trimmed.Length == 1)
             {
-                result.Add(new KeyValuePair<string, string>(command, arguments));
+                result.Add(new KeyValuePair<string, string>(command, string.Empty));
                 return ToLookup(result);
             }
 
             var normalized = NormalizeInputArray(trimmed);
+            var arguments = new List<string>();
 
             for (var i = 1; i < normalized.Length; i++)
             {
                 var value = normalized[i];
 
-                switch (IsCommand(value))
+                if (!IsCommand(value))
                 {
-                    case true:
-                        result.Add(new KeyValuePair<string, string>(command, arguments));
-                        command = GetCommand(value);
-                        break;
-                    case false:
-                        result.Add(new KeyValuePair<string, string>(command, value));
-                        break;
+                    arguments.Add(value);
+                    if (i != normalized.Length -1)
+                        continue;
                 }
+
+                AddArguments(command, arguments, result);
+                arguments = new List<string>();
+                command = GetCommand(value);
             }
 
             return ToLookup(result);
         }
+
+
+        private List<KeyValuePair<string, string>> AddArguments(string command, List<string> arguments, List<KeyValuePair<string, string>> target)
+        {
+            if (arguments.Any())
+                target.AddRange(arguments.Select(arg => new KeyValuePair<string, string>(command, arg)));
+            else
+                target.Add(new KeyValuePair<string, string>(command, string.Empty));
+
+            return target;
+        } 
 
 
         private string GetCommand(string target)
@@ -64,6 +76,7 @@ namespace FloxDc.Commandor
 
         private string[] NormalizeInputArray(string[] target)
         {
+            var commandArgRegex = @"^(?<command>(-{1,2}|/)\w+)(:|=){1}(?<arg>.*)";
             var result = new List<string>();
 
             foreach (var str in target)
@@ -72,7 +85,13 @@ namespace FloxDc.Commandor
 
                 if (IsCommand(s))
                 {
-                    var ms = Regex.Match(s, @"^(?<command>(-{1,2}|/)\w+)(:|=){1}(?<arg>.*)");
+                    if (!Regex.IsMatch(s, commandArgRegex))
+                    {
+                        result.Add(s);
+                        continue;
+                    }
+
+                    var ms = Regex.Match(s, commandArgRegex);
 
                     result.Add(ms.Groups["command"].Value);
                     if (!ms.Groups["arg"].Success)
